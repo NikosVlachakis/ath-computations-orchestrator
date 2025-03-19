@@ -10,37 +10,37 @@ COORDINATOR_PORT = 12314
 
 FINAL_OUTPUT_URL = "http://some-other-service:12345/api/final-output"
 
-def get_all_clients() -> list:
-    url = f"http://{COORDINATOR_HOST}:{COORDINATOR_PORT}/api/get-all-clients"
-    try:
-        resp = requests.get(url, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        client_ids = [item["id"] for item in data]
-        logging.info(f"[Aggregator] Retrieved client IDs: {client_ids}")
-        return client_ids
-    except requests.RequestException as e:
-        logging.warning(f"[Aggregator] Error fetching clients: {e}")
-        return []
 
 def trigger_and_poll_aggregator(job_id: str) -> dict:
     """
-    1) Retrieve aggregator client IDs (get_all_clients).
+    1) Retrieve participants from Redis (job_info["updatedClients"]).
     2) POST to aggregator, initiating secure aggregation for jobId.
     3) Poll /api/get-result until COMPLETED.
     4) Decode final aggregator array into a readable format.
-    5) Send final decoded output to an external service.
+    5) Optionally send final decoded output to an external service.
     Returns the final aggregator response (dict).
     """
-    client_ids = get_all_clients()
-    if not client_ids:
-        logging.warning("[Aggregator] No clients found or error retrieving them.")
+    job_info = redis_service.get_job_info(job_id)
+    if not job_info:
+        logging.warning(f"[Aggregator] No job info found in Redis for job {job_id}. Aborting aggregator call.")
         return {}
+
+    # Suppose "updatedClients" are the participants
+    # or if you store participant IDs in some "participants" field, adapt below
+    updated_clients = list(job_info.get("updatedClients", []))
+    # make sure that all the elements in the list are strings
+    updated_clients = [str(client) for client in updated_clients]
+    
+    if not updated_clients:
+        logging.warning(f"[Aggregator] No updated clients found for job {job_id}. Nothing to aggregate.")
+        return {}
+    
+    logging.info(f"[Aggregator] Starting secure aggregation for job {job_id} with clients: {updated_clients}")
 
     agg_url = f"http://{COORDINATOR_HOST}:{COORDINATOR_PORT}/api/secure-aggregation/job-id/{job_id}"
     body = {
         "computationType": "sum",
-        "clients": client_ids
+        "clients": updated_clients
     }
     try:
         resp = requests.post(agg_url, json=body, timeout=15)
