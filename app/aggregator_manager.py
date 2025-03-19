@@ -1,0 +1,139 @@
+import time
+import requests
+import logging
+
+from services.redis_service import redis_service  # for job info
+import json
+
+COORDINATOR_HOST = "195.251.63.193"
+COORDINATOR_PORT = 12314
+
+FINAL_OUTPUT_URL = "http://some-other-service:12345/api/final-output"
+
+def get_all_clients() -> list:
+    url = f"http://{COORDINATOR_HOST}:{COORDINATOR_PORT}/api/get-all-clients"
+    try:
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        client_ids = [item["id"] for item in data]
+        logging.info(f"[Aggregator] Retrieved client IDs: {client_ids}")
+        return client_ids
+    except requests.RequestException as e:
+        logging.warning(f"[Aggregator] Error fetching clients: {e}")
+        return []
+
+def trigger_and_poll_aggregator(job_id: str) -> dict:
+    """
+    1) Retrieve aggregator client IDs (get_all_clients).
+    2) POST to aggregator, initiating secure aggregation for jobId.
+    3) Poll /api/get-result until COMPLETED.
+    4) Decode final aggregator array into a readable format.
+    5) Send final decoded output to an external service.
+    Returns the final aggregator response (dict).
+    """
+    client_ids = get_all_clients()
+    if not client_ids:
+        logging.warning("[Aggregator] No clients found or error retrieving them.")
+        return {}
+
+    agg_url = f"http://{COORDINATOR_HOST}:{COORDINATOR_PORT}/api/secure-aggregation/job-id/{job_id}"
+    body = {
+        "computationType": "sum",
+        "clients": client_ids
+    }
+    try:
+        resp = requests.post(agg_url, json=body, timeout=15)
+        if resp.status_code != 200:
+            logging.warning(f"[Aggregator] Unexpected HTTP {resp.status_code} from aggregator.")
+            return {}
+        logging.info(f"[Aggregator] Secure aggregation started for job {job_id}.")
+    except requests.RequestException as e:
+        logging.warning(f"[Aggregator] Error posting aggregator request: {e}")
+        return {}
+
+    get_res_url = f"http://{COORDINATOR_HOST}:{COORDINATOR_PORT}/api/get-result/job-id/{job_id}"
+
+    while True:
+        try:
+            r = requests.get(get_res_url, timeout=15)
+            if r.status_code == 200:
+                result_json = r.json()
+                if result_json.get("status") == "COMPLETED":
+                    logging.info(f"[Aggregator] Aggregation completed for job {job_id}.")
+
+                    # Get aggregator's final array
+                    computation_output = result_json.get("computationOutput", [])
+
+                    # Decode aggregator array using stored schema
+                    decoded_info = decode_final_output(job_id, computation_output)
+                    if decoded_info:
+                        result_json["decodedFeatures"] = decoded_info
+                        logging.info(f"[Aggregator] Decoded final output for job {job_id}: {decoded_info}")
+
+                        # 5) Send final decoded output to external service
+                        send_final_output(decoded_info)
+
+                    return result_json
+                else:
+                    logging.info(f"[Aggregator] job {job_id} in progress, status={result_json.get('status')}")
+            else:
+                logging.warning(f"[Aggregator] Poll got HTTP {r.status_code}. Retrying in 3s...")
+        except requests.RequestException as e:
+            logging.warning(f"[Aggregator] Poll request error: {e}")
+
+        time.sleep(3)
+
+
+def decode_final_output(job_id: str, aggregator_array: list) -> list:
+    """
+    Fetch schema from Redis, decode aggregator_array -> [
+      { "featureName": <...>, "aggregatedNotNull": X, "aggregatedTrue": Y }, ...
+    ]
+    """
+    job_info = redis_service.get_job_info(job_id)
+    if not job_info:
+        logging.warning(f"[decode_final_output] No job info for {job_id}.")
+        return []
+
+    schema = job_info.get("schema")
+    if not schema:
+        logging.warning(f"[decode_final_output] No schema stored for job {job_id}.")
+        return []
+
+    result = []
+    for item in schema:
+        feature_name = item["featureName"]
+        offset = item["offset"]
+        length = item["length"]
+        slice_of_data = aggregator_array[offset : offset + length]
+        if len(slice_of_data) < 2:
+            logging.warning(f"[decode_final_output] aggregator_array too short at offset={offset}.")
+            continue
+
+        aggregated_not_null = slice_of_data[0]
+        aggregated_true = slice_of_data[1]
+        result.append({
+            "featureName": feature_name,
+            "aggregatedNotNull": aggregated_not_null,
+            "aggregatedTrue": aggregated_true
+        })
+    return result
+
+def send_final_output(output_data: list):
+    if not output_data:
+        logging.warning("[Aggregator] No computationOutput to send.")
+        return
+
+    body = {
+        "computationOutput": output_data
+    }
+    logging.info(f"[Aggregator] Sending final output: {body}")
+    # try:
+    #         resp = requests.post(FINAL_OUTPUT_URL, json=body, timeout=15)
+    #         if resp.status_code == 200:
+    #             logging.info("[Aggregator] Successfully sent final output to external service.")
+    #         else:
+    #             logging.warning(f"[Aggregator] Final output post got HTTP {resp.status_code}")
+    # except requests.RequestException as e:
+    #     logging.warning(f"[Aggregator] Error sending final output: {e}")

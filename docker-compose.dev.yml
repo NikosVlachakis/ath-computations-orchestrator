@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  computations_orchestrator:
+    build: .
+    image: computations_orchestrator
+    container_name: computations_orchestrator_container
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+
+  redis:
+    image: "redis:6.2-alpine"
+    container_name: computations_redis
+    ports:
+      - "6379:6379"
