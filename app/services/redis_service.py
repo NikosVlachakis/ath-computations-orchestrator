@@ -29,7 +29,7 @@ class RedisService:
         current_schema = self._client.hget(key, "schema")
         if not current_schema:
             self._client.hset(key, "schema", json.dumps(schema))
-            logging.info(f"[RedisService] Stored schema for job {job_id}: {schema}")
+            logging.info(f"[RedisService] Stored schema for job {job_id}.")
 
     def increment_done_count(self, job_id: str, client_id: str):
         clients_key = f"job:{job_id}:updatedClients"
