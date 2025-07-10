@@ -72,7 +72,7 @@ def trigger_and_poll_aggregator(job_id: str) -> dict:
                         logging.info(f"[Aggregator] Decoded final output for job {job_id}: {decoded_info}")
 
                         # 5) Send final decoded output to external service
-                        send_final_output(decoded_info)
+                        send_final_output(decoded_info,updated_clients)
 
                     return result_json
                 else:
@@ -265,20 +265,37 @@ def decode_generic_feature(feature_name: str, data_type: str, data: list, fields
     
     return result
 
-def send_final_output(output_data: list):
-    if not output_data:
-        logging.warning("[Aggregator] No computationOutput to send.")
-        return
+def send_final_output(output_data: list, updated_clients: list):
+    """
+    Send final decoded output to an external service.
+    """
+    _trigger_chaincode(updated_clients)
 
-    body = {
-        "computationOutput": output_data
+def _trigger_chaincode(updated_clients: list):
+    url = "http://195.251.63.82:3000/invoke"
+    headers = {"Content-Type": "application/json"}
+
+    client_ids = ", ".join(f"'{client}'" for client in updated_clients)
+    query = f"select * from table where id in ({client_ids})"
+
+    payload = {
+        "channelid": "dt4h",
+        "chaincodeid": "dt4hCC",
+        "function": "LogQuery",
+        "args": [query]
     }
-    logging.info(f"[Aggregator] Sending final output: {body}")
-    # try:
-    #         resp = requests.post(FINAL_OUTPUT_URL, json=body, timeout=15)
-    #         if resp.status_code == 200:
-    #             logging.info("[Aggregator] Successfully sent final output to external service.")
-    #         else:
-    #             logging.warning(f"[Aggregator] Final output post got HTTP {resp.status_code}")
-    # except requests.RequestException as e:
-    #     logging.warning(f"[Aggregator] Error sending final output: {e}")
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        if response.status_code == 200:
+            logging.info("Query invoked successfully with payload: %s", payload)
+            # Optional: parse response
+            logging.info("Response content: %s", response.text)
+        else:
+            logging.warning(
+                "Unexpected status code when invoking chaincode: %d - %s",
+                response.status_code,
+                response.text
+            )
+    except requests.RequestException as e:
+        logging.error("Error invoking chaincode: %s", e)
