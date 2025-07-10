@@ -1,0 +1,357 @@
+# =============================================================================
+# Computations Orchestrator Service - .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+
+# Docker volumes
+docker-volumes/
+.docker/
+
+# Docker build context
+.dockerignore
+
+# -----------------------------------------------------------------------------
+# Service Specific - Orchestrator
+# -----------------------------------------------------------------------------
+
+# Redis data persistence
+dump.rdb
+*.rdb
+appendonly.aof
+redis-data/
+
+# Job state and metadata
+jobs/
+job_states/
+metadata/
+
+# Aggregation results
+aggregation_results/
+computed_results/
+final_results/
+
+# Schema storage
+schema_cache/
+schemas/
+
+# Client data and communications
+client_data/
+client_states/
+
+# Orchestrator logs and state
+orchestrator_state/
+orchestrator_logs/
+
+# Temporary orchestration files
+*.job
+*.task
+*.workflow
+
+# -----------------------------------------------------------------------------
+# Development and IDE
+# -----------------------------------------------------------------------------
+
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Vim
+*.swp
+*.swo
+
+# -----------------------------------------------------------------------------
+# Flask Specific
+# -----------------------------------------------------------------------------
+
+# Flask instance folder
+instance/
+
+# Flask session files
+flask_session/
+
+# Flask uploads
+uploads/
+
+# Flask cache
+.webassets-cache
+
+# -----------------------------------------------------------------------------
+# Database
+# -----------------------------------------------------------------------------
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Database migrations
+migrations/versions/*.py
+!migrations/versions/__init__.py
+
+# Database dumps
+*.sql
+*.dump
+
+# -----------------------------------------------------------------------------
+# Logs and Debug
+# -----------------------------------------------------------------------------
+
+*.log
+*.out
+*.err
+logs/
+debug/
+*.debug
+
+# Application logs
+app.log
+orchestrator.log
+redis.log
+aggregator.log
+
+# -----------------------------------------------------------------------------
+# OS
+# -----------------------------------------------------------------------------
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# -----------------------------------------------------------------------------
+# Temporary Files
+# -----------------------------------------------------------------------------
+
+*.tmp
+*.temp
+*.bak
+*.backup
+tmp/
+temp/
+cache/
+
+# -----------------------------------------------------------------------------
+# Security
+# -----------------------------------------------------------------------------
+
+# Environment files
+.env*
+*.env
+
+# Secrets and credentials
+*secret*
+*key*
+*token*
+credentials.json
+config/secrets.*
+
+# API keys and certificates
+*.pem
+*.p12
+*.jks
+
+# Redis authentication
+redis.conf
+redis-auth.conf
+
+# -----------------------------------------------------------------------------
+# Configuration Overrides
+# -----------------------------------------------------------------------------
+
+# Local configuration files
+*local.json
+*local.yml
+*local.yaml
+*local.conf
+
+# Development overrides
+docker-compose.override.yml
+docker-compose.local.yml
+
+# -----------------------------------------------------------------------------
+# Testing
+# -----------------------------------------------------------------------------
+
+# Test outputs
+test_output/
+test_results/
+test_reports/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# -----------------------------------------------------------------------------
+# Project Specific Patterns
+# -----------------------------------------------------------------------------
+
+# Backup files
+*_backup.*
+*.json.bak
+*.yml.bak
+*.yaml.bak
+
+# Personal notes
+notes.txt
+todo.txt
+scratch.*
+
+# Temporary job files
+job_*.json
+task_*.json
+client_*.json
+
+# Large result files
+results_*.json
+aggregation_*.json
+computed_*.json 

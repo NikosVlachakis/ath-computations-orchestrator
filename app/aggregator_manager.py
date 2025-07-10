@@ -87,9 +87,14 @@ def trigger_and_poll_aggregator(job_id: str) -> dict:
 
 def decode_final_output(job_id: str, aggregator_array: list) -> list:
     """
-    Fetch schema from Redis, decode aggregator_array -> [
-      { "featureName": <...>, "aggregatedNotNull": X, "aggregatedTrue": Y }, ...
-    ]
+    Enhanced decoder that handles boolean, numeric, and categorical features using schema information.
+    
+    Args:
+        job_id: The job identifier
+        aggregator_array: The aggregated results array from SMPC
+        
+    Returns:
+        List of decoded feature results with appropriate fields for each data type
     """
     job_info = redis_service.get_job_info(job_id)
     if not job_info:
@@ -106,18 +111,158 @@ def decode_final_output(job_id: str, aggregator_array: list) -> list:
         feature_name = item["featureName"]
         offset = item["offset"]
         length = item["length"]
+        data_type = item.get("dataType", "BOOLEAN")  # Default to boolean for backward compatibility
+        fields = item.get("fields", ["numOfNotNull", "numOfTrue"])  # Default field names
+        
+        # Extract the slice of data for this feature
         slice_of_data = aggregator_array[offset : offset + length]
-        if len(slice_of_data) < 2:
-            logging.warning(f"[decode_final_output] aggregator_array too short at offset={offset}.")
+        
+        if len(slice_of_data) < length:
+            logging.warning(f"[decode_final_output] aggregator_array too short at offset={offset}, expected {length}, got {len(slice_of_data)}.")
             continue
 
-        aggregated_not_null = slice_of_data[0]
-        aggregated_true = slice_of_data[1]
-        result.append({
+        # Decode based on data type
+        if data_type == "BOOLEAN":
+            result.append(decode_boolean_feature(feature_name, slice_of_data, fields))
+        elif data_type == "NUMERIC":
+            result.append(decode_numeric_feature(feature_name, slice_of_data, fields))
+        elif data_type in ["NOMINAL", "ORDINAL"]:
+            result.append(decode_categorical_feature(feature_name, slice_of_data, fields))
+        else:
+            logging.warning(f"[decode_final_output] Unknown data type '{data_type}' for feature '{feature_name}'.")
+            # Generic decode - just map fields to values
+            result.append(decode_generic_feature(feature_name, data_type, slice_of_data, fields))
+    
+    return result
+
+
+def decode_boolean_feature(feature_name: str, data: list, fields: list) -> dict:
+    """
+    Decode boolean feature data
+    
+    Args:
+        feature_name: Name of the feature
+        data: Aggregated data slice [numOfNotNull, numOfTrue]
+        fields: Field names
+        
+    Returns:
+        Decoded boolean feature information
+    """
+    if len(data) < 2:
+        logging.warning(f"[decode_boolean_feature] Insufficient data for boolean feature '{feature_name}'.")
+        return {
             "featureName": feature_name,
+            "dataType": "BOOLEAN",
+            "aggregatedNotNull": 0,
+            "aggregatedTrue": 0,
+            "percentage": 0.0
+        }
+    
+    aggregated_not_null = data[0]
+    aggregated_true = data[1]
+    percentage = (aggregated_true / aggregated_not_null * 100.0) if aggregated_not_null > 0 else 0.0
+    
+    return {
+        "featureName": feature_name,
+        "dataType": "BOOLEAN",
+        "aggregatedNotNull": aggregated_not_null,
+        "aggregatedTrue": aggregated_true,
+        "percentage": round(percentage, 2)
+    }
+
+
+def decode_numeric_feature(feature_name: str, data: list, fields: list) -> dict:
+    """
+    Decode numeric feature data
+    
+    Args:
+        feature_name: Name of the feature
+        data: Aggregated data slice [numOfNotNull, min, max, avg, q1, q2, q3]
+        fields: Field names
+        
+    Returns:
+        Decoded numeric feature information
+    """
+    if len(data) < 7:
+        logging.warning(f"[decode_numeric_feature] Insufficient data for numeric feature '{feature_name}'.")
+        return {
+            "featureName": feature_name,
+            "dataType": "NUMERIC",
+            "aggregatedNotNull": 0
+        }
+    
+    return {
+        "featureName": feature_name,
+        "dataType": "NUMERIC",
+        "aggregatedNotNull": data[0],
+        "aggregatedMin": data[1],
+        "aggregatedMax": data[2],
+        "aggregatedAvg": data[3],
+        "aggregatedQ1": data[4],
+        "aggregatedQ2": data[5],
+        "aggregatedQ3": data[6]
+    }
+
+
+def decode_categorical_feature(feature_name: str, data: list, fields: list) -> dict:
+    """
+    Decode categorical feature data
+    
+    Args:
+        feature_name: Name of the feature
+        data: Aggregated data slice [numOfNotNull, numUniqueValues, topValueCount]
+        fields: Field names
+        
+    Returns:
+        Decoded categorical feature information
+    """
+    if len(data) < 3:
+        logging.warning(f"[decode_categorical_feature] Insufficient data for categorical feature '{feature_name}'.")
+        return {
+            "featureName": feature_name,
+            "dataType": "CATEGORICAL",
+            "aggregatedNotNull": 0
+        }
+    
+    aggregated_not_null = data[0]
+    num_unique_values = data[1]
+    top_value_count = data[2]
+    diversity = (num_unique_values / aggregated_not_null * 100.0) if aggregated_not_null > 0 else 0.0
+    
+    return {
+        "featureName": feature_name,
+        "dataType": "CATEGORICAL",
             "aggregatedNotNull": aggregated_not_null,
-            "aggregatedTrue": aggregated_true
-        })
+        "aggregatedUniqueValues": num_unique_values,
+        "aggregatedTopValueCount": top_value_count,
+        "diversity": round(diversity, 2)
+    }
+
+
+def decode_generic_feature(feature_name: str, data_type: str, data: list, fields: list) -> dict:
+    """
+    Generic decoder for unknown feature types
+    
+    Args:
+        feature_name: Name of the feature
+        data_type: Data type string
+        data: Aggregated data slice
+        fields: Field names
+        
+    Returns:
+        Decoded feature information
+    """
+    result = {
+        "featureName": feature_name,
+        "dataType": data_type,
+        "aggregatedNotNull": data[0] if len(data) > 0 else 0
+    }
+    
+    # Map remaining fields to values
+    for i, field in enumerate(fields[1:], 1):  # Skip first field (numOfNotNull)
+        if i < len(data):
+            result[f"aggregated{field.capitalize()}"] = data[i]
+    
     return result
 
 def send_final_output(output_data: list):
