@@ -3,6 +3,14 @@
 import redis
 import json
 import logging
+import sys
+
+# Import self-contained logging (optional)
+try:
+    from logging_config import get_logger
+    CENTRALIZED_LOGGING = True
+except ImportError:
+    CENTRALIZED_LOGGING = False
 
 class RedisService:
     def __init__(self, host="redis", port=6379, db=0):

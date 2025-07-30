@@ -4,6 +4,8 @@ services:
   computations_orchestrator:
     image: nikosvlah/computations-orchestrator:latest
     container_name: computations_orchestrator_container
+    volumes:
+      - ../logs:/app/logs
     ports:
       - "5000:5000"
     depends_on:

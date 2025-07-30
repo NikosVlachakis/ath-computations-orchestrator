@@ -1,8 +1,16 @@
 import logging
+import sys
 from flask import Blueprint, request, jsonify
 from aggregator_manager import trigger_and_poll_aggregator
 from threading import Thread
 from services.redis_service import redis_service
+
+# Import self-contained logging (optional)
+try:
+    from logging_config import get_logger
+    CENTRALIZED_LOGGING = True
+except ImportError:
+    CENTRALIZED_LOGGING = False
 
 orchestrator_bp = Blueprint("orchestrator_bp", __name__)
 
@@ -20,6 +28,8 @@ def update_job():
     client_id = str(data["clientId"])
     total_clients = int(data["totalClients"])
     schema = data.get("schema")  # may be None
+    
+    logging.info(f"[Orchestrator] Received update request for job {job_id}, client {client_id}")
 
     # 1) Create job record if not exists
     if not redis_service.job_exists(job_id):
