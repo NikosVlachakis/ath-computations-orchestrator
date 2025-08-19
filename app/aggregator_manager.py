@@ -1,12 +1,20 @@
+import os
 import time
 import requests
 import logging
 
 from services.redis_service import redis_service  # for job info
+from services.aggregated_results_handler import AggregatedResultsHandler
 import json
 
 COORDINATOR_HOST = "195.251.63.193"
 COORDINATOR_PORT = 12314
+
+# Configuration for results handling
+RESULTS_API_URL = os.getenv("RESULTS_API_URL", "http://195.251.63.82:3000/invoke")  # Default to chaincode URL
+RESULTS_SAVE_PATH = os.getenv("RESULTS_SAVE_PATH", "/app/results")
+ENABLE_API_SENDING = os.getenv("ENABLE_API_SENDING", "true").lower() == "true"
+ENABLE_FILESYSTEM_SAVING = os.getenv("ENABLE_FILESYSTEM_SAVING", "true").lower() == "true"
 
 FINAL_OUTPUT_URL = "http://some-other-service:12345/api/final-output"
 
@@ -71,8 +79,8 @@ def trigger_and_poll_aggregator(job_id: str) -> dict:
                         result_json["decodedFeatures"] = decoded_info
                         logging.info(f"[Aggregator] Decoded final output for job {job_id}: {decoded_info}")
 
-                        # 5) Send final decoded output to external service
-                        send_final_output(decoded_info,updated_clients)
+                        # 5) Send final decoded output using the new results handler
+                        handle_final_results(decoded_info, job_id, updated_clients)
 
                     return result_json
                 else:
@@ -265,9 +273,41 @@ def decode_generic_feature(feature_name: str, data_type: str, data: list, fields
     
     return result
 
+def handle_final_results(output_data: list, job_id: str, updated_clients: list):
+    """
+    Handle final decoded output using the new AggregatedResultsHandler.
+    Supports both API sending and filesystem saving based on environment configuration.
+    """
+    # Initialize the results handler
+    results_handler = AggregatedResultsHandler(default_save_path=RESULTS_SAVE_PATH)
+    
+    # Determine which operations to perform
+    api_url = RESULTS_API_URL if ENABLE_API_SENDING else None
+    
+    if ENABLE_FILESYSTEM_SAVING or api_url:
+        # Use the combined method for efficiency
+        results = results_handler.send_and_save(
+            aggregated_data=output_data,
+            job_id=job_id,
+            client_list=updated_clients,
+            api_url=api_url,
+            headers={"Content-Type": "application/json"},
+            timeout=15
+        )
+        
+        # Log results
+        if api_url and not results['api_success']:
+            logging.error(f"[Aggregator] Failed to send results to API for job {job_id}")
+        if ENABLE_FILESYSTEM_SAVING and not results['save_success']:
+            logging.error(f"[Aggregator] Failed to save results to filesystem for job {job_id}")
+    else:
+        logging.info(f"[Aggregator] Results handling disabled for job {job_id}")
+
+
 def send_final_output(output_data: list, updated_clients: list):
     """
-    Send final decoded output to an external service.
+    Legacy function - kept for backward compatibility.
+    Uses chaincode for specific blockchain integration.
     """
     _trigger_chaincode(updated_clients)
 

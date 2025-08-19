@@ -5,8 +5,14 @@ services:
     build: .
     image: computations_orchestrator
     container_name: computations_orchestrator_container
+    environment:
+      - RESULTS_API_URL=http://external-api:8080/api/aggregated-results  # Replace with actual API
+      - RESULTS_SAVE_PATH=/app/results  # Path to save aggregated results
+      - ENABLE_API_SENDING=true  # Set to 'false' to disable API sending
+      - ENABLE_FILESYSTEM_SAVING=true  # Set to 'false' to disable filesystem saving
     volumes:
       - ../logs:/app/logs
+      - ../results:/app/results  # Mount results directory to host
     ports:
       - "5000:5000"
     depends_on:
