@@ -26,7 +26,11 @@ def update_job():
     data = request.json
     job_id = str(data["jobId"])
     client_id = str(data["clientId"])
-    total_clients = int(data["totalClients"])
+    
+    # Get total clients from clientsList
+    clients_list = data["clientsList"]
+    total_clients = len(clients_list)
+    
     schema = data.get("schema")  # may be None
     
     logging.info(f"[Orchestrator] Received update request for job {job_id}, client {client_id}")
