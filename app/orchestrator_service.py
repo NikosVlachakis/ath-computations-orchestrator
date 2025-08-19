@@ -27,9 +27,8 @@ def update_job():
     job_id = str(data["jobId"])
     client_id = str(data["clientId"])
     
-    # Get total clients from clientsList
-    clients_list = data["clientsList"]
-    total_clients = len(clients_list)
+    # Get total clients from totalClients parameter
+    total_clients = int(data["totalClients"])
     
     schema = data.get("schema")  # may be None
     
