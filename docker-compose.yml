@@ -8,8 +8,9 @@ services:
     environment:
       - RESULTS_API_URL=http://external-api:8080/api/aggregated-results  # Replace with actual API
       - RESULTS_SAVE_PATH=/app/results  # Path to save aggregated results
-      - ENABLE_API_SENDING=true  # Set to 'false' to disable API sending
-      - ENABLE_FILESYSTEM_SAVING=true  # Set to 'false' to disable filesystem saving
+      - ENABLE_API_SENDING=false  # Set to 'true' to enable API sending
+      - ENABLE_FILESYSTEM_SAVING=false  # Set to 'true' to enable filesystem saving
+      # If both are false, results will be logged instead
     volumes:
       - ../logs:/app/logs
       - ../results:/app/results  # Mount results directory to host

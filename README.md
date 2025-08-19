@@ -147,6 +147,7 @@ environment:
 ### Results Handler Features
 - **API Integration**: Send aggregated results to external services
 - **Filesystem Persistence**: Save results as JSON or TXT files
+- **Logging Fallback**: When both API and filesystem are disabled, results are logged
 - **Flexible Configuration**: Enable/disable individual features
 - **Error Handling**: Robust error handling with detailed logging
 - **Batch Operations**: Combined API + filesystem operations
@@ -171,6 +172,27 @@ Run comprehensive tests with examples:
 ```bash
 cd tests
 python test_aggregated_results_handler.py
+```
+
+### Output Modes
+
+**1. API + Filesystem (Both Enabled)**:
+- Sends results to external API AND saves to filesystem
+- Provides maximum persistence and integration
+
+**2. Single Mode (One Enabled)**:
+- Either API sending OR filesystem saving
+- Choose based on your infrastructure needs
+
+**3. Logging Mode (Both Disabled)**:
+- Results are logged with detailed breakdown
+- Perfect for debugging and monitoring
+- Example log output:
+```
+[Aggregator] Feature 1/3: age (NUMERIC)
+[Aggregator]   → NotNull: 1000, Sum: 45000, Avg: 45.0
+[Aggregator] Feature 2/3: is_employed (BOOLEAN)  
+[Aggregator]   → NotNull: 1000, True: 750, Percentage: 75.0%
 ```
 
 ### Output Formats

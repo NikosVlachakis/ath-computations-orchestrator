@@ -301,7 +301,37 @@ def handle_final_results(output_data: list, job_id: str, updated_clients: list):
         if ENABLE_FILESYSTEM_SAVING and not results['save_success']:
             logging.error(f"[Aggregator] Failed to save results to filesystem for job {job_id}")
     else:
-        logging.info(f"[Aggregator] Results handling disabled for job {job_id}")
+        # Both API sending and filesystem saving are disabled - log results instead
+        logging.info(f"[Aggregator] Both API sending and filesystem saving disabled - logging results for job {job_id}")
+        logging.info(f"[Aggregator] Job: {job_id}, Clients: {updated_clients}, Features: {len(output_data)}")
+        
+        for i, feature_data in enumerate(output_data, 1):
+            feature_name = feature_data.get('featureName', 'Unknown')
+            data_type = feature_data.get('dataType', 'Unknown')
+            logging.info(f"[Aggregator] Feature {i}/{len(output_data)}: {feature_name} ({data_type})")
+            
+            # Log key aggregation results based on data type
+            if data_type == "NUMERIC":
+                avg = feature_data.get('aggregatedAvg', 'N/A')
+                sum_val = feature_data.get('aggregatedSum', 'N/A')
+                not_null = feature_data.get('aggregatedNotNull', 'N/A')
+                logging.info(f"[Aggregator]   → NotNull: {not_null}, Sum: {sum_val}, Avg: {avg}")
+            elif data_type == "BOOLEAN":
+                not_null = feature_data.get('aggregatedNotNull', 'N/A')
+                true_count = feature_data.get('aggregatedTrue', 'N/A')
+                percentage = feature_data.get('percentageTrue', 'N/A')
+                logging.info(f"[Aggregator]   → NotNull: {not_null}, True: {true_count}, Percentage: {percentage}%")
+            elif data_type in ["CATEGORICAL", "NOMINAL", "ORDINAL"]:
+                not_null = feature_data.get('aggregatedNotNull', 'N/A')
+                unique = feature_data.get('aggregatedUniqueValues', 'N/A')
+                diversity = feature_data.get('diversity', 'N/A')
+                logging.info(f"[Aggregator]   → NotNull: {not_null}, Unique: {unique}, Diversity: {diversity}%")
+            else:
+                # Generic logging for unknown types
+                not_null = feature_data.get('aggregatedNotNull', 'N/A')
+                logging.info(f"[Aggregator]   → NotNull: {not_null}, Data: {feature_data}")
+        
+        logging.info(f"[Aggregator] Results logging completed for job {job_id}")
 
 
 def send_final_output(output_data: list, updated_clients: list):
