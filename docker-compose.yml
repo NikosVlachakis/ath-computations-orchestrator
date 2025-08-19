@@ -6,6 +6,8 @@ services:
     image: computations_orchestrator
     container_name: computations_orchestrator_container
     environment:
+      - COORDINATOR_HOST=195.251.63.193  # SMPC coordinator host
+      - COORDINATOR_PORT=12314  # SMPC coordinator port
       - RESULTS_API_URL=http://external-api:8080/api/aggregated-results  # Replace with actual API
       - RESULTS_SAVE_PATH=/app/results  # Path to save aggregated results
       - ENABLE_API_SENDING=false  # Set to 'true' to enable API sending

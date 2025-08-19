@@ -7,16 +7,15 @@ from services.redis_service import redis_service  # for job info
 from services.aggregated_results_handler import AggregatedResultsHandler
 import json
 
-COORDINATOR_HOST = "195.251.63.193"
-COORDINATOR_PORT = 12314
+# Configuration for SMPC coordinator
+COORDINATOR_HOST = os.getenv("COORDINATOR_HOST", "195.251.63.193")
+COORDINATOR_PORT = int(os.getenv("COORDINATOR_PORT", "12314"))
 
 # Configuration for results handling
 RESULTS_API_URL = os.getenv("RESULTS_API_URL", "http://195.251.63.82:3000/invoke")  # Default to chaincode URL
 RESULTS_SAVE_PATH = os.getenv("RESULTS_SAVE_PATH", "/app/results")
 ENABLE_API_SENDING = os.getenv("ENABLE_API_SENDING", "true").lower() == "true"
 ENABLE_FILESYSTEM_SAVING = os.getenv("ENABLE_FILESYSTEM_SAVING", "true").lower() == "true"
-
-FINAL_OUTPUT_URL = "http://some-other-service:12345/api/final-output"
 
 
 def trigger_and_poll_aggregator(job_id: str) -> dict:
