@@ -165,8 +165,9 @@ def decode_boolean_feature(feature_name: str, data: list, fields: list) -> dict:
             "percentage": 0.0
         }
     
-    aggregated_not_null = data[0]
-    aggregated_true = data[1]
+    # Convert to integers (SMPC aggregator returns strings)
+    aggregated_not_null = int(float(data[0]))
+    aggregated_true = int(float(data[1]))
     percentage = (aggregated_true / aggregated_not_null * 100.0) if aggregated_not_null > 0 else 0.0
     
     return {
@@ -198,16 +199,17 @@ def decode_numeric_feature(feature_name: str, data: list, fields: list) -> dict:
             "aggregatedNotNull": 0
         }
     
+    # Convert to appropriate numeric types (SMPC aggregator returns strings)
     return {
         "featureName": feature_name,
         "dataType": "NUMERIC",
-        "aggregatedNotNull": data[0],
-        "aggregatedMin": data[1],
-        "aggregatedMax": data[2],
-        "aggregatedAvg": data[3],
-        "aggregatedQ1": data[4],
-        "aggregatedQ2": data[5],
-        "aggregatedQ3": data[6]
+        "aggregatedNotNull": int(float(data[0])),
+        "aggregatedMin": float(data[1]),
+        "aggregatedMax": float(data[2]),
+        "aggregatedAvg": float(data[3]),
+        "aggregatedQ1": float(data[4]),
+        "aggregatedQ2": float(data[5]),
+        "aggregatedQ3": float(data[6])
     }
 
 
@@ -231,15 +233,16 @@ def decode_categorical_feature(feature_name: str, data: list, fields: list) -> d
             "aggregatedNotNull": 0
         }
     
-    aggregated_not_null = data[0]
-    num_unique_values = data[1]
-    top_value_count = data[2]
+    # Convert to integers (SMPC aggregator returns strings)
+    aggregated_not_null = int(float(data[0]))
+    num_unique_values = int(float(data[1]))
+    top_value_count = int(float(data[2]))
     diversity = (num_unique_values / aggregated_not_null * 100.0) if aggregated_not_null > 0 else 0.0
     
     return {
         "featureName": feature_name,
         "dataType": "CATEGORICAL",
-            "aggregatedNotNull": aggregated_not_null,
+        "aggregatedNotNull": aggregated_not_null,
         "aggregatedUniqueValues": num_unique_values,
         "aggregatedTopValueCount": top_value_count,
         "diversity": round(diversity, 2)
@@ -262,13 +265,19 @@ def decode_generic_feature(feature_name: str, data_type: str, data: list, fields
     result = {
         "featureName": feature_name,
         "dataType": data_type,
-        "aggregatedNotNull": data[0] if len(data) > 0 else 0
+        "aggregatedNotNull": int(float(data[0])) if len(data) > 0 else 0
     }
     
-    # Map remaining fields to values
+    # Map remaining fields to values (convert strings to appropriate numeric types)
     for i, field in enumerate(fields[1:], 1):  # Skip first field (numOfNotNull)
         if i < len(data):
-            result[f"aggregated{field.capitalize()}"] = data[i]
+            try:
+                # Try to convert to number (int if whole number, float otherwise)
+                value = float(data[i])
+                result[f"aggregated{field.capitalize()}"] = int(value) if value.is_integer() else value
+            except (ValueError, TypeError):
+                # If conversion fails, keep as string
+                result[f"aggregated{field.capitalize()}"] = data[i]
     
     return result
 
