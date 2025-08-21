@@ -31,7 +31,7 @@ docker ps
 {
   "jobId": "shared_job_123",
   "clientId": "client_A",
-  "clientsList": ["client_A", "client_B", "client_C"],
+  "totalClients": 3,
   "schema": [
     {"name": "age", "dataType": "NUMERIC"},
     {"name": "isActive", "dataType": "BOOLEAN"}
@@ -65,7 +65,7 @@ docker ps
 ## 🔄 Workflow
 1. **Client Registration** - First client creates job record
 2. **Schema Storage** - Job schema stored on first update
-3. **Progress Tracking** - Each client completion tracked via clientsList
+3. **Progress Tracking** - Each client completion tracked via totalClients count
 4. **Aggregation Trigger** - When all clients complete, triggers aggregator
 5. **Result Storage** - Final aggregated results stored
 
@@ -81,7 +81,7 @@ python test_centralized_logging.py
 - Log directory creation and permissions
 - Container startup logging
 - HTTP endpoint logging (GET /, GET /api/job-status)
-- API update request logging with clientsList support
+- API update request logging with totalClients support
 - Redis operations (job creation, schema storage, completion tracking)
 - Error logging with clear marking
 - Log format validation (timestamp, service identification)
@@ -93,12 +93,12 @@ python test_centralized_logging.py
 # Test single client scenario
 curl -X POST http://localhost:5000/api/update \
   -H "Content-Type: application/json" \
-  -d '{"jobId": "test_123", "clientId": "client_1", "clientsList": ["client_1"]}'
+  -d '{"jobId": "test_123", "clientId": "client_1", "totalClients": 1}'
 
 # Test multi-client scenario
 curl -X POST http://localhost:5000/api/update \
   -H "Content-Type: application/json" \
-  -d '{"jobId": "test_123", "clientId": "client_1", "clientsList": ["client_1", "client_2", "client_3"]}'
+  -d '{"jobId": "test_123", "clientId": "client_1", "totalClients": 3}'
 
 # Check job status
 curl http://localhost:5000/api/job-status/test_123
@@ -113,7 +113,7 @@ curl http://localhost:5000/api/job-status/test_123
 ### What Gets Logged
 - ✅ Service startup and Flask initialization
 - ✅ Every HTTP request received
-- ✅ Job creation and client registration with clientsList
+- ✅ Job creation and client registration with totalClients
 - ✅ Redis operations (create, update, retrieve)
 - ✅ Schema storage and validation
 - ✅ Aggregation triggers and results
@@ -128,7 +128,7 @@ curl http://localhost:5000/api/job-status/test_123
 ### Redis Schema
 ```
 Keys:
-- job:{jobId} → Hash with totalClients (from clientsList length), doneCount, schema, finalResult
+- job:{jobId} → Hash with totalClients, doneCount, schema, finalResult
 - job:{jobId}:updatedClients → Set of completed client IDs
 ```
 
@@ -206,4 +206,4 @@ python test_aggregated_results_handler.py
 - Redis 6.2+ (included in docker-compose)
 
 ---
-✅ **Independent orchestration service with Redis coordination and clientsList support**
+✅ **Independent orchestration service with Redis coordination and totalClients support**

@@ -99,7 +99,7 @@ class TestCentralizedLogging(unittest.TestCase):
         update_data = {
             "jobId": "test_logging_job",
             "clientId": "test_client",
-            "clientsList": ["test_client"],
+            "totalClients": 1,
             "schema": [{"name": "test_feature", "dataType": "BOOLEAN"}]
         }
         
