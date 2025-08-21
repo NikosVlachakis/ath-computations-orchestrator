@@ -69,9 +69,16 @@ def update_job():
     return jsonify({"message": f"Update for job {job_id}, client {client_id} recorded."}), 200
 
 def aggregator_task(job_id: str):
+    from datetime import datetime
+    
     result_json = trigger_and_poll_aggregator(job_id)
     if result_json:
+        # Add completion timestamp to final result
+        result_json["completedAt"] = datetime.now().isoformat()
+        result_json["timestamp"] = datetime.now().isoformat()  # For backward compatibility
+        
         redis_service.set_final_result(job_id, result_json)
+        logging.info(f"[Orchestrator] Final result stored for job {job_id} with timestamp")
     else:
         logging.warning(f"[Orchestrator] aggregator returned empty or error for job {job_id}.")
 
@@ -89,15 +96,55 @@ def get_job_status(job_id):
     final_result = job_info.get("finalResult")
     if final_result and final_result.get("status") == "COMPLETED":
         # Job is fully completed (aggregator finished)
+        
+        # Extract aggregated results for polling nodes
+        aggregated_results = final_result.get("decodedFeatures", [])
+        
         return jsonify({
+            "status": "COMPLETED",
+            "jobId": job_id,
             "message": f"Job {job_id} is completed.",
+            "aggregatedResults": aggregated_results,
+            "metadata": {
+                "totalFeatures": len(aggregated_results),
+                "totalClients": job_info.get("totalClients", 0),
+                "completedAt": final_result.get("completedAt") or final_result.get("timestamp"),
+                "doneCount": job_info.get("doneCount", 0)
+            },
+            "jobInfo": job_info
+        }), 200
+    elif final_result and final_result.get("status") in ["FAILED", "ERROR"]:
+        # Job failed
+        return jsonify({
+            "status": "FAILED", 
+            "jobId": job_id,
+            "message": f"Job {job_id} failed during aggregation.",
+            "error": final_result.get("error", "Unknown error"),
             "jobInfo": job_info
         }), 200
     else:
-        # Not completed yet
+        # Not completed yet - in progress
         done_count = job_info.get("doneCount", 0)
         total_clients = job_info.get("totalClients", 0)
+        
+        # Determine current status
+        if done_count == 0:
+            status = "WAITING"
+        elif done_count < total_clients:
+            status = "IN_PROGRESS"
+        elif done_count >= total_clients:
+            status = "AGGREGATING"  # All clients done, aggregation in progress
+        else:
+            status = "UNKNOWN"
+            
         return jsonify({
-            "message": f"Job {job_id} is in progress (doneCount={done_count}/{total_clients}).",
+            "status": status,
+            "jobId": job_id,
+            "message": f"Job {job_id} is {status.lower()} (doneCount={done_count}/{total_clients}).",
+            "progress": {
+                "doneCount": done_count,
+                "totalClients": total_clients,
+                "percentage": round((done_count / total_clients * 100), 1) if total_clients > 0 else 0
+            },
             "jobInfo": job_info
         }), 200

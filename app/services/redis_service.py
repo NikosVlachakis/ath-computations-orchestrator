@@ -63,7 +63,7 @@ class RedisService:
         data["finalResult"] = json.loads(data["finalResult"]) if data["finalResult"] else None
 
         clients_key = f"{key}:updatedClients"
-        data["updatedClients"] = self._client.smembers(clients_key)
+        data["updatedClients"] = list(self._client.smembers(clients_key))  # Convert set to list for JSON serialization
         return data
 
     def set_final_result(self, job_id: str, final_result: dict):
