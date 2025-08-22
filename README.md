@@ -131,42 +131,6 @@ Keys:
 - job:{jobId} → Hash with totalClients, doneCount, schema, finalResult
 - job:{jobId}:updatedClients → Set of completed client IDs
 ```
-
-## 🔧 Aggregated Results Configuration
-
-### Environment Variables
-Configure in `docker-compose.yml`:
-```yaml
-environment:
-  - RESULTS_API_URL=http://external-api:8080/api/results  # API endpoint for results
-  - RESULTS_SAVE_PATH=/app/results  # Filesystem path to save results  
-  - ENABLE_API_SENDING=true  # Enable/disable API sending (default: true)
-  - ENABLE_FILESYSTEM_SAVING=true  # Enable/disable filesystem saving (default: true)
-```
-
-### Results Handler Features
-- **API Integration**: Send aggregated results to external services
-- **Filesystem Persistence**: Save results as JSON or TXT files
-- **Logging Fallback**: When both API and filesystem are disabled, results are logged
-- **Flexible Configuration**: Enable/disable individual features
-- **Error Handling**: Robust error handling with detailed logging
-- **Batch Operations**: Combined API + filesystem operations
-
-### Example Usage
-```python
-from services.aggregated_results_handler import AggregatedResultsHandler
-
-handler = AggregatedResultsHandler(default_save_path="/app/results")
-
-# Send to API and save to filesystem
-results = handler.send_and_save(
-    aggregated_data=decoded_features,
-    job_id="job_123",
-    client_list=["client1", "client2"],
-    api_url="https://api.example.com/results"
-)
-```
-
 ### Testing
 Run comprehensive tests with examples:
 ```bash
